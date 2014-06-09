@@ -86,6 +86,10 @@ protected:
 	PPCAnalyst::CodeBlock code_block;
 	PPCAnalyst::PPCAnalyzer analyzer;
 
+	// For OPTION_BACKWARD_JUMP
+	// The key is the PPC address
+	std::unordered_map<u32, const u8*> m_backward_jump_location;
+
 public:
 	// This should probably be removed from public:
 	JitOptions jo;

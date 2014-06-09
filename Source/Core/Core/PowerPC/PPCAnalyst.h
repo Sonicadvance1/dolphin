@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "Common/Common.h"
@@ -124,6 +125,14 @@ struct CodeBlock
 
 	// Are we a broken block?
 	bool m_broken;
+
+	// For OPTION_BACKWARD_JUMP
+	// backwards_jump_to's key is the address that has instructions jump to.
+	// It's vector contains the addresses that are jumping to the key.
+	std::unordered_map<u32, std::vector<u32>> m_backward_jump_to;
+	// backwards_jumps_from key is the address we are jumping from
+	// It's value is the address it is jumping to(always behind)
+	std::unordered_map<u32, u32> m_backward_jump_from;
 };
 
 class PPCAnalyzer
@@ -162,6 +171,12 @@ public:
 		// Requires JIT support to work.
 		// XXX: NOT COMPLETE
 		OPTION_FORWARD_JUMP = (1 << 3),
+
+		// Precursor to complex blocks.
+		// Allows jumping backwards in a block
+		// Dumps register state during jumps
+		// Doesn't require register stats
+		OPTION_BACKWARD_JUMP = (1 << 4),
 	};
 
 
@@ -173,6 +188,8 @@ public:
 	bool HasOption(AnalystOption option) { return !!(m_options & option); }
 
 	u32 Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 blockSize);
+
+	u32 GetCycles(u32 start, u32 end);
 };
 
 void LogFunctionCall(u32 addr);

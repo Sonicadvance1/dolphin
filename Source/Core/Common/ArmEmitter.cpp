@@ -407,7 +407,7 @@ void ARMXEmitter::SetJumpTarget(FixupBranch const &branch)
 void ARMXEmitter::B(const void *fnptr)
 {
 	s32 distance = (s32)fnptr - (s32(code) + 8);
-	_dbg_assert_msg_(DYNA_REC, distance > -0x2000000 && distance <= 0x2000000,
+	_assert_msg_(DYNA_REC, distance > -0x2000000 && distance <= 0x2000000,
 	                 "B out of range (%p calls %p)", code, fnptr);
 
 	Write32(condition | 0x0A000000 | ((distance >> 2) & 0x00FFFFFF));

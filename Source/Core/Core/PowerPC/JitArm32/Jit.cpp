@@ -45,6 +45,7 @@ void JitArm::Init()
 	code_block.m_gpa = &js.gpa;
 	code_block.m_fpa = &js.fpa;
 	analyzer.SetOption(PPCAnalyst::PPCAnalyzer::OPTION_CONDITIONAL_CONTINUE);
+	analyzer.SetOption(PPCAnalyst::PPCAnalyzer::OPTION_BACKWARD_JUMP);
 }
 
 void JitArm::ClearCache()
@@ -131,21 +132,25 @@ void JitArm::Cleanup()
 		POP(4, R0, R1, R2, R3);
 	}
 }
-void JitArm::DoDownCount()
+void JitArm::DoDownCount(u32 amount)
 {
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	MOVI2R(rA, (u32)&CoreTiming::downcount);
 	LDR(rB, rA);
+
+	if (!amount)
+		amount = js.downcountAmount;
+
 	if (js.downcountAmount < 255) // We can enlarge this if we used rotations
 	{
-		SUBS(rB, rB, js.downcountAmount);
+		SUBS(rB, rB, amount);
 		STR(rB, rA);
 	}
 	else
 	{
 		ARMReg rC = gpr.GetReg(false);
-		MOVI2R(rC, js.downcountAmount);
+		MOVI2R(rC, amount);
 		SUBS(rB, rB, rC);
 		STR(rB, rA);
 	}
@@ -179,36 +184,56 @@ void JitArm::WriteExceptionExit()
 	MOVI2R(A, (u32)asm_routines.testExceptions);
 	B(A);
 }
+
 void JitArm::WriteExit(u32 destination)
 {
-	Cleanup();
-
-	DoDownCount();
-	//If nobody has taken care of this yet (this can be removed when all branches are done)
-	JitBlock *b = js.curBlock;
-	JitBlock::LinkData linkData;
-	linkData.exitAddress = destination;
-	linkData.exitPtrs = GetWritableCodePtr();
-	linkData.linkStatus = false;
-
-	// Link opportunity!
-	int block;
-	if (jo.enableBlocklink && (block = blocks.GetBlockNumberFromStartAddress(destination)) >= 0)
+	std::unordered_map<u32, const u8*>::iterator it;
+	bool WriteRealExit = true;
+	if (analyzer.HasOption(PPCAnalyst::PPCAnalyzer::OPTION_BACKWARD_JUMP) &&
+	    code_block.m_backward_jump_to.find(destination) != code_block.m_backward_jump_to.end())
 	{
-		// It exists! Joy of joy!
-		B(blocks.GetBlock(block)->checkedEntry);
-		linkData.linkStatus = true;
+		// Jump location exists
+		// That means that this is a backwards jump within the same block.
+		// Where we are jumping to has the registers flushed at that point
+		// Only branches call this, so we know the register cache is already dumped here.
+		if (m_backward_jump_location.find(destination) != m_backward_jump_location.end())
+		{
+			DoDownCount(analyzer.GetCycles(destination, js.compilerPC));
+			B(m_backward_jump_location[destination]);
+			WriteRealExit = false;
+		}
 	}
-	else
+	if (WriteRealExit)
 	{
-		ARMReg A = gpr.GetReg(false);
-		MOVI2R(A, destination);
-		STR(A, R9, PPCSTATE_OFF(pc));
-		MOVI2R(A, (u32)asm_routines.dispatcher);
-		B(A);
-	}
+		Cleanup();
 
-	b->linkData.push_back(linkData);
+		DoDownCount();
+		//If nobody has taken care of this yet (this can be removed when all branches are done)
+		JitBlock *b = js.curBlock;
+		JitBlock::LinkData linkData;
+		linkData.exitAddress = destination;
+		linkData.exitPtrs = GetWritableCodePtr();
+		linkData.linkStatus = false;
+
+		// Link opportunity!
+		int block;
+		if (jo.enableBlocklink && (block = blocks.GetBlockNumberFromStartAddress(destination)) >= 0)
+		{
+			// It exists! Joy of joy!
+			B(blocks.GetBlock(block)->checkedEntry);
+			linkData.linkStatus = true;
+		}
+		else
+		{
+			ARMReg A = gpr.GetReg(false);
+			MOVI2R(A, destination);
+			STR(A, R9, PPCSTATE_OFF(pc));
+			MOVI2R(A, (u32)asm_routines.dispatcher);
+			B(A);
+		}
+
+		b->linkData.push_back(linkData);
+	}
 }
 
 void STACKALIGN JitArm::Run()
@@ -469,6 +494,26 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 					// Don't do this yet
 					BKPT(0x7777);
 				}
+
+				if (analyzer.HasOption(PPCAnalyst::PPCAnalyzer::OPTION_BACKWARD_JUMP) &&
+				    code_block.m_backward_jump_to.find(js.compilerPC) != code_block.m_backward_jump_to.end())
+				{
+					// This instruction is going to be jumped to
+					// Dump the register cache, this option doesn't support complex blocks
+					// Add it to the code pointers so we know where to jump to.
+					gpr.Flush();
+					fpr.Flush();
+					m_backward_jump_location[js.compilerPC] = GetCodePtr();
+
+					SetCC(CC_MI);
+					ARMReg rA = gpr.GetReg(false);
+					MOVI2R(rA, js.compilerPC);
+					STR(rA, R9, PPCSTATE_OFF(pc));
+					MOVI2R(rA, (u32)asm_routines.doTiming);
+					B(rA);
+					SetCC();
+				}
+
 				JitArmTables::CompileInstruction(ops[i]);
 				fpr.Flush();
 				if (js.memcheck && (opinfo->flags & FL_LOADSTORE))

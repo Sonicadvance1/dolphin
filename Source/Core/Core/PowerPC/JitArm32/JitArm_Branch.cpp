@@ -106,12 +106,6 @@ void JitArm::bx(UGeckoInstruction inst)
 		STR(rA, R9, PPCSTATE_OFF(spr[SPR_LR]));
 		//ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 	}
-	// If this is not the last instruction of a block,
-	// we will skip the rest process.
-	// Because PPCAnalyst::Flatten() merged the blocks.
-	if (!js.isLastInstruction) {
-		return;
-	}
 
 	gpr.Flush();
 	fpr.Flush();

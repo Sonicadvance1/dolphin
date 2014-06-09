@@ -186,6 +186,7 @@ void Jit64::Init()
 	code_block.m_gpa = &js.gpa;
 	code_block.m_fpa = &js.fpa;
 	analyzer.SetOption(PPCAnalyst::PPCAnalyzer::OPTION_CONDITIONAL_CONTINUE);
+	analyzer.SetOption(PPCAnalyst::PPCAnalyzer::OPTION_BACKWARD_JUMP);
 }
 
 void Jit64::ClearCache()
@@ -283,32 +284,53 @@ void Jit64::Cleanup()
 
 void Jit64::WriteExit(u32 destination)
 {
-	Cleanup();
-
-	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
-
-	//If nobody has taken care of this yet (this can be removed when all branches are done)
-	JitBlock *b = js.curBlock;
-	JitBlock::LinkData linkData;
-	linkData.exitAddress = destination;
-	linkData.exitPtrs = GetWritableCodePtr();
-	linkData.linkStatus = false;
-
-	// Link opportunity!
-	int block;
-	if (jo.enableBlocklink && (block = blocks.GetBlockNumberFromStartAddress(destination)) >= 0)
+	std::unordered_map<u32, const u8*>::iterator it;
+	bool WriteRealExit = true;
+	if (analyzer.HasOption(PPCAnalyst::PPCAnalyzer::OPTION_BACKWARD_JUMP) &&
+	    code_block.m_backward_jump_to.find(destination) != code_block.m_backward_jump_to.end())
 	{
-		// It exists! Joy of joy!
-		JMP(blocks.GetBlock(block)->checkedEntry, true);
-		linkData.linkStatus = true;
-	}
-	else
-	{
-		MOV(32, M(&PC), Imm32(destination));
-		JMP(asm_routines.dispatcher, true);
+		// Jump location exists
+		// That means that this is a backwards jump within the same block.
+		// Where we are jumping to has the registers flushed at that point
+		// Only branches call this, so we know the register cache is already dumped here.
+		if (m_backward_jump_location.find(destination) != m_backward_jump_location.end())
+		{
+			u32 downcount = analyzer.GetCycles(destination, js.compilerPC);
+			SUB(32, M(&CoreTiming::downcount), downcount > 127 ? Imm32(downcount) : Imm8(downcount));
+			JMP(m_backward_jump_location[destination], true);
+			WriteRealExit = false;
+		}
 	}
 
-	b->linkData.push_back(linkData);
+	if (WriteRealExit)
+	{
+		Cleanup();
+
+		SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
+
+		//If nobody has taken care of this yet (this can be removed when all branches are done)
+		JitBlock *b = js.curBlock;
+		JitBlock::LinkData linkData;
+		linkData.exitAddress = destination;
+		linkData.exitPtrs = GetWritableCodePtr();
+		linkData.linkStatus = false;
+
+		// Link opportunity!
+		int block;
+		if (jo.enableBlocklink && (block = blocks.GetBlockNumberFromStartAddress(destination)) >= 0)
+		{
+			// It exists! Joy of joy!
+			JMP(blocks.GetBlock(block)->checkedEntry, true);
+			linkData.linkStatus = true;
+		}
+		else
+		{
+			MOV(32, M(&PC), Imm32(destination));
+			JMP(asm_routines.dispatcher, true);
+		}
+
+		b->linkData.push_back(linkData);
+	}
 }
 
 void Jit64::WriteExitDestInEAX()
@@ -444,6 +466,7 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 	js.cancel = false;
 	jit->js.numLoadStoreInst = 0;
 	jit->js.numFloatingPointInst = 0;
+	m_backward_jump_location.clear();
 
 	u32 nextPC = em_address;
 	// Analyze the block, collect all instructions it is made of (including inlining,
@@ -564,6 +587,22 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 
 		if (!ops[i].skip)
 		{
+			if (analyzer.HasOption(PPCAnalyst::PPCAnalyzer::OPTION_BACKWARD_JUMP) &&
+			    code_block.m_backward_jump_to.find(js.compilerPC) != code_block.m_backward_jump_to.end())
+			{
+				// This instruction is going to be jumped to
+				// Dump the register cache, this option doesn't support complex blocks
+				// Add it to the code pointers so we know where to jump to.
+				gpr.Flush(FLUSH_ALL);
+				fpr.Flush(FLUSH_ALL);
+				m_backward_jump_location[js.compilerPC] = GetCodePtr();
+
+				FixupBranch skip = J_CC(CC_NBE);
+				MOV(32, M(&PC), Imm32(js.compilerPC));
+				JMP(asm_routines.doTiming, true);  // downcount hit zero - go doTiming.
+				SetJumpTarget(skip);
+			}
+
 			if ((opinfo->flags & FL_USE_FPU) && !js.firstFPInstructionFound)
 			{
 				gpr.Flush(FLUSH_ALL);

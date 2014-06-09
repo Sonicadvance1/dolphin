@@ -526,6 +526,18 @@ void PPCAnalyzer::SetInstructionStats(CodeBlock *block, CodeOp *code, GekkoOPInf
 	}
 }
 
+u32 PPCAnalyzer::GetCycles(u32 start, u32 end)
+{
+	u32 cycles = 0;
+	for(;start < end; start += 4)
+	{
+		UGeckoInstruction inst = JitInterface::Read_Opcode_JIT(start);
+		GekkoOPInfo *opinfo = GetOpInfo(inst);
+		cycles += opinfo->numCycles;
+	}
+	return cycles;
+}
+
 u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 blockSize)
 {
 	// Clear block stats
@@ -544,6 +556,8 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 	// Reset our block state
 	block->m_broken = false;
 	block->m_num_instructions = 0;
+	block->m_backward_jump_to.clear();
+	block->m_backward_jump_from.clear();
 
 	CodeOp *code = buffer->codebuffer;
 
@@ -573,7 +587,7 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 			SetInstructionStats(block, &code[i], opinfo, i);
 
 			bool follow = false;
-			u32 destination = 0;
+			u32 inline_destination = 0;
 
 			bool conditional_continue = false;
 
@@ -584,10 +598,10 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 				{
 					//Is bx - should we inline? yes!
 					if (inst.AA)
-						destination = SignExt26(inst.LI << 2);
+						inline_destination = SignExt26(inst.LI << 2);
 					else
-						destination = address + SignExt26(inst.LI << 2);
-					if (destination != block->m_address)
+						inline_destination = address + SignExt26(inst.LI << 2);
+					if (inline_destination != block->m_address)
 						follow = true;
 				}
 				else if (inst.OPCD == 19 && inst.SUBOP10 == 16 &&
@@ -596,7 +610,7 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 				{
 					// bclrx with unconditional branch = return
 					follow = true;
-					destination = return_address;
+					inline_destination = return_address;
 					return_address = 0;
 
 					if (inst.LK)
@@ -654,6 +668,36 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 
 			if (!follow)
 			{
+				if (HasOption(OPTION_BACKWARD_JUMP))
+				{
+					u32 destination = 0;
+					if (inst.OPCD == 18)
+					{
+						// bx is a unconditional branch
+						if (inst.AA)
+							destination = SignExt26(inst.LI << 2);
+						else
+							destination = address + SignExt26(inst.LI << 2);
+					}
+					else if (inst.OPCD == 16)
+					{
+						// bcx is a conditional branch
+						if (inst.AA)
+							destination = SignExt16(inst.BD << 2);
+						else
+							destination = address + SignExt16(inst.BD << 2);
+					}
+					if (destination > block->m_address && destination < address)
+					{
+						// Our backwards jump is within the block
+
+						// This isn't our endblock instruction since we are jumping backwards within out block
+						// Make sure we don't jump out here
+						block->m_backward_jump_to[destination].push_back(address);
+						block->m_backward_jump_from[address] = destination;
+						conditional_continue = true;
+					}
+				}
 				if (!conditional_continue && opinfo->flags & FL_ENDBLOCK) //right now we stop early
 				{
 					found_exit = true;

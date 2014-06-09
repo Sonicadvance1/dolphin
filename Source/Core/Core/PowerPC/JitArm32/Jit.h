@@ -43,7 +43,7 @@ private:
 
 	PPCAnalyst::CodeBuffer code_buffer;
 
-	void DoDownCount();
+	void DoDownCount(u32 amount = 0);
 
 	void PrintDebug(UGeckoInstruction inst, u32 level);
 

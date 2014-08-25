@@ -95,9 +95,9 @@ std::string PostProcessingShaderConfiguration::VerifyOptions(const ConfigMap& co
 			    option.second.m_integer_max_values.size() != option.second.m_integer_step_values.size())
 				return StringFromFormat("Option '%s' has invalid set value amounts", option.second.m_option_name.c_str());
 
-			int option_size = option.second.m_integer_values.size();
+			size_t option_size = option.second.m_integer_values.size();
 			// Make sure our minimums are lower than our maximums
-			for (int i = 0; i < option_size; ++i)
+			for (size_t i = 0; i < option_size; ++i)
 			{
 				if (option.second.m_integer_min_values[i] > option.second.m_integer_max_values[i])
 					return StringFromFormat("Option '%s' minimum value index %d is greater than max(%d > %d)",
@@ -106,7 +106,7 @@ std::string PostProcessingShaderConfiguration::VerifyOptions(const ConfigMap& co
 			}
 
 			// Make sure the default value is between minimum and maximum
-			for (int i = 0; i < option_size; ++i)
+			for (size_t i = 0; i < option_size; ++i)
 			{
 				if (option.second.m_integer_values[i] < option.second.m_integer_min_values[i] ||
 				    option.second.m_integer_values[i] > option.second.m_integer_max_values[i])
@@ -117,7 +117,7 @@ std::string PostProcessingShaderConfiguration::VerifyOptions(const ConfigMap& co
 			}
 
 			// Make sure our step size is smaller than the range acceptable values
-			for (int i = 0; i < option_size; ++i)
+			for (size_t i = 0; i < option_size; ++i)
 			{
 				if (option.second.m_integer_step_values[i] >
 				    (option.second.m_integer_max_values[i] - option.second.m_integer_min_values[i]))
@@ -134,9 +134,9 @@ std::string PostProcessingShaderConfiguration::VerifyOptions(const ConfigMap& co
 			    option.second.m_float_max_values.size() != option.second.m_float_step_values.size())
 				return StringFromFormat("Option '%s' has invalid set value amounts", option.second.m_option_name.c_str());
 
-			int option_size = option.second.m_float_values.size();
+			size_t option_size = option.second.m_float_values.size();
 			// Make sure our minimums are lower than our maximums
-			for (int i = 0; i < option_size; ++i)
+			for (size_t i = 0; i < option_size; ++i)
 			{
 				if (option.second.m_float_min_values[i] > option.second.m_float_max_values[i])
 					return StringFromFormat("Option '%s' minimum value index %d is greater than max(%f > %f)",
@@ -145,7 +145,7 @@ std::string PostProcessingShaderConfiguration::VerifyOptions(const ConfigMap& co
 			}
 
 			// Make sure the default value is between minimum and maximum
-			for (int i = 0; i < option_size; ++i)
+			for (size_t i = 0; i < option_size; ++i)
 			{
 				if (option.second.m_float_values[i] < option.second.m_float_min_values[i] ||
 				    option.second.m_float_values[i] > option.second.m_float_max_values[i])
@@ -156,7 +156,7 @@ std::string PostProcessingShaderConfiguration::VerifyOptions(const ConfigMap& co
 			}
 
 			// Make sure our step size is smaller than the range acceptable values
-			for (int i = 0; i < option_size; ++i)
+			for (size_t i = 0; i < option_size; ++i)
 			{
 				if (option.second.m_float_step_values[i] >
 				    (option.second.m_float_max_values[i] - option.second.m_float_min_values[i]))

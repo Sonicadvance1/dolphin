@@ -432,8 +432,16 @@ void ProgramShaderCache::Shutdown()
 	// store all shaders in cache on disk
 	if (g_ogl_config.bSupportsGLSLCache && !g_Config.bEnableShaderDebugging)
 	{
+		File::IOFile file;
+		std::string output;
+		file.Open("last.txt", "wb");
+		output = StringFromFormat("%ld shaders\n", pshaders.size());
+		file.WriteBytes(&output[0], output.size());
 		for (auto& entry : pshaders)
 		{
+			output = StringFromFormat("UID, %s, %s\n", entry.first.vuid.GetUidAsString().c_str(), entry.first.puid.GetUidAsString().c_str());
+			file.WriteBytes(&output[0], output.size());
+
 			if (entry.second.in_cache)
 			{
 				continue;
@@ -457,6 +465,7 @@ void ProgramShaderCache::Shutdown()
 
 		g_program_disk_cache.Sync();
 		g_program_disk_cache.Close();
+		file.Close();
 	}
 
 	glUseProgram(0);

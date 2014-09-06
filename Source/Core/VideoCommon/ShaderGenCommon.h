@@ -93,6 +93,14 @@ public:
 	template<class T>
 	inline T& GetUidData() { return data; }
 
+	std::string GetUidAsString() const
+	{
+		std::string str = "";
+		for (auto& it : values)
+			str = StringFromFormat("%s%02x", str.c_str(), it);
+		return str;
+	}
+
 	const uid_data& GetUidData() const { return data; }
 	size_t GetUidDataSize() const { return sizeof(values); }
 

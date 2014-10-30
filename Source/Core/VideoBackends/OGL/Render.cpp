@@ -466,7 +466,7 @@ Renderer::Renderer()
 		glClearDepthf = ClearDepthf;
 	}
 
-	if (!(GLExtensions::Version() >= 320))
+	if (GLExtensions::Version() < 320)
 	{
 		glFramebufferTexture = FramebufferTexture;
 	}

@@ -505,6 +505,8 @@ Renderer::Renderer()
 			g_Config.backend_info.bSupportsBindingLayout = true;
 			g_Config.backend_info.bSupportsEarlyZ = true;
 		}
+		// TODO: OpenGL ES 3.1 provides the necessary features as extensions.
+		g_Config.backend_info.bSupportsStereoscopy = false;
 	}
 	else
 	{
@@ -519,11 +521,13 @@ Renderer::Renderer()
 		{
 			g_ogl_config.eSupportedGLSLVersion = GLSL_130;
 			g_Config.backend_info.bSupportsEarlyZ = false; // layout keyword is only supported on glsl150+
+			g_Config.backend_info.bSupportsStereoscopy = false; // geometry shaders are only supported on glsl150+
 		}
 		else if (strstr(g_ogl_config.glsl_version, "1.40"))
 		{
 			g_ogl_config.eSupportedGLSLVersion = GLSL_140;
 			g_Config.backend_info.bSupportsEarlyZ = false; // layout keyword is only supported on glsl150+
+			g_Config.backend_info.bSupportsStereoscopy = false; // geometry shaders are only supported on glsl150+
 		}
 		else
 		{
@@ -568,6 +572,7 @@ Renderer::Renderer()
 	if (g_ogl_config.max_samples < 1 || !g_ogl_config.bSupportsMSAA)
 		g_ogl_config.max_samples = 1;
 
+	g_Config.VerifyValidity();
 	UpdateActiveConfig();
 
 	OSD::AddMessage(StringFromFormat("Video Info: %s, %s, %s",
@@ -585,7 +590,8 @@ Renderer::Renderer()
 			g_ogl_config.bSupportsGLBufferStorage ? "" : "BufferStorage ",
 			g_ogl_config.bSupportsGLSync ? "" : "Sync ",
 			g_ogl_config.bSupportsMSAA ? "" : "MSAA ",
-			g_ogl_config.bSupportSampleShading ? "" : "SSAA "
+			g_ogl_config.bSupportSampleShading ? "" : "SSAA ",
+			g_ActiveConfig.backend_info.bSupportsGSInstancing ? "" : "GSInstancing "
 			);
 
 	s_LastMultisampleMode = g_ActiveConfig.iMultisampleMode;

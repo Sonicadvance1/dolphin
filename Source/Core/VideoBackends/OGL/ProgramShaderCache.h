@@ -60,7 +60,7 @@ struct SHADER
 		glDeleteProgram(glprogid);
 		glprogid = 0;
 	}
-	GLuint glprogid; // opengl program id
+	GLuint glprogid; // OpenGL program id
 
 	std::string strvprog, strpprog, strgprog;
 

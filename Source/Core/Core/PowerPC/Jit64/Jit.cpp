@@ -177,7 +177,6 @@ void Jit64::Init()
 	EnableBlockLink();
 
 	jo.optimizeGatherPipe = true;
-	jo.fastInterrupts = false;
 	jo.accurateSinglePrecision = true;
 	js.memcheck = SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU;
 

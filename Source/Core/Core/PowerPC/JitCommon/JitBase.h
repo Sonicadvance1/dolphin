@@ -63,7 +63,6 @@ protected:
 		bool optimizeStack;
 		bool enableBlocklink;
 		bool optimizeGatherPipe;
-		bool fastInterrupts;
 		bool accurateSinglePrecision;
 	};
 	struct JitState

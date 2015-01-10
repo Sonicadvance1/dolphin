@@ -36,13 +36,15 @@ set(SRCS BreakPoints.cpp
 
 if(ANDROID)
 	set(SRCS ${SRCS}
+	         HidInterface_Android.cpp
 	         Logging/ConsoleListenerDroid.cpp)
 else()
 	set(SRCS ${SRCS}
+	         HidInterface.cpp
 	         Logging/ConsoleListenerNix.cpp)
 endif()
 
-set(LIBS enet)
+list(APPEND LIBS enet)
 if(_M_ARM_64)
 	set(SRCS ${SRCS}
 	         Arm64Emitter.cpp
@@ -60,7 +62,7 @@ else()
 	endif()
 endif()
 
-set(LIBS "${CMAKE_THREAD_LIBS_INIT}" ${VTUNE_LIBRARIES})
+list(APPEND LIBS "${CMAKE_THREAD_LIBS_INIT}" ${VTUNE_LIBRARIES})
 if(NOT APPLE AND NOT ANDROID)
 	set(LIBS ${LIBS} rt)
 endif()

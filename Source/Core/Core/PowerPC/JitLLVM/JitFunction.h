@@ -36,6 +36,9 @@ private:
 	struct
 	{
 		llvm::LoadInst* m_ppcstate;
+		llvm::LoadInst* m_memory_base;
+		llvm::LoadInst* m_gatherpipe;
+		llvm::LoadInst* m_gatherpipe_count;
 		llvm::Value* m_PCGEP;
 		llvm::Value* m_NPCGEP;
 		llvm::Value* m_CRGEP[8];
@@ -52,6 +55,7 @@ private:
 	llvm::Value* GetEXCGEP();
 	llvm::Value* GetCTRGEP();
 	llvm::Value* GetLRGEP();
+	llvm::LoadInst* GetGatherPipeCount();
 
 public:
 
@@ -65,6 +69,8 @@ public:
 
 	// Helpers
 	llvm::LoadInst* GetPPCState();
+	llvm::LoadInst* GetGlobalMemory();
+	llvm::LoadInst* GetGatherPipe();
 	llvm::LoadInst* LoadPC();
 	llvm::LoadInst* LoadNPC();
 	llvm::LoadInst* LoadCTR();
@@ -77,6 +83,7 @@ public:
 	llvm::LoadInst* LoadSR(llvm::Value* sr);
 	llvm::LoadInst* LoadGQR(int gqr);
 	llvm::LoadInst* LoadDownCount();
+	llvm::LoadInst* LoadGatherPipeCount();
 	void StorePC(llvm::Value* val);
 	void StoreNPC(llvm::Value* val);
 	void StoreCTR(llvm::Value* val);
@@ -88,6 +95,7 @@ public:
 	void StoreCarry(llvm::Value* val);
 	void StoreSR(llvm::Value* val, llvm::Value* sr);
 	void StoreDownCount(llvm::Value* val);
+	void StoreGatherPipeCount(llvm::Value* val);
 	llvm::LoadInst* LoadGPR(int reg);
 	void StoreGPR(llvm::Value* val, int reg);
 	llvm::LoadInst* LoadFPR(int reg, bool ps1);

@@ -232,6 +232,7 @@ if(HAS_LLVM)
 	         PowerPC/JitLLVM/JitHelpers.cpp
 	         PowerPC/JitLLVM/JitModule.cpp
 	         PowerPC/JitLLVM/JitLLVM_Branch.cpp
+	         PowerPC/JitLLVM/JitLLVM_ConstantLoadStorePass.cpp
 	         PowerPC/JitLLVM/JitLLVM_FloatingPoint.cpp
 	         PowerPC/JitLLVM/JitLLVM_Integer.cpp
 	         PowerPC/JitLLVM/JitLLVM_LoadStore.cpp

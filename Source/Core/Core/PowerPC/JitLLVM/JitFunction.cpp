@@ -57,6 +57,9 @@ void LLVMFunction::BuildGEPs()
 {
 	// Build our GEPs
 	GetPPCState();
+	GetGlobalMemory();
+	GetGatherPipe();
+	GetGatherPipeCount();
 	GetPCGEP();
 	GetNPCGEP();
 	for (int i = 0; i < 8; ++i)
@@ -76,6 +79,28 @@ LoadInst* LLVMFunction::GetPPCState()
 	}
 
 	return m_ptrs.m_ppcstate;
+}
+
+LoadInst* LLVMFunction::GetGlobalMemory()
+{
+	if (!m_ptrs.m_memory_base)
+	{
+		GlobalVariable* memory_global = m_mod->getNamedGlobal("memory_base");
+		m_ptrs.m_memory_base = m_builder.CreateLoad(memory_global, m_builder.getInt32(0), "memory_base");
+	}
+
+	return m_ptrs.m_memory_base;
+}
+
+LoadInst* LLVMFunction::GetGatherPipe()
+{
+	if (!m_ptrs.m_gatherpipe)
+	{
+		GlobalVariable* gatherpipe_global = m_mod->getNamedGlobal("GatherPipe");
+		m_ptrs.m_gatherpipe = m_builder.CreateLoad(gatherpipe_global, m_builder.getInt32(0), "gatherpipe");
+	}
+
+	return m_ptrs.m_gatherpipe;
 }
 
 Value* LLVMFunction::GetPCGEP()
@@ -207,6 +232,17 @@ Value* LLVMFunction::GetLRGEP()
 	return m_ptrs.m_LRGEP;
 }
 
+LoadInst* LLVMFunction::GetGatherPipeCount()
+{
+	if (!m_ptrs.m_gatherpipe_count)
+	{
+		GlobalVariable* gatherpipe_count_global = m_mod->getNamedGlobal("GatherPipeCount");
+		m_ptrs.m_gatherpipe_count = m_builder.CreateLoad(gatherpipe_count_global, m_builder.getInt32(0), "gatherpipe_count");
+	}
+
+	return m_ptrs.m_gatherpipe_count;
+}
+
 LoadInst* LLVMFunction::LoadPC()
 {
 	return m_builder.CreateLoad(GetPCGEP());
@@ -314,6 +350,11 @@ LoadInst* LLVMFunction::LoadDownCount()
 
 	Value* downcount = m_builder.CreateGEP(ppcState, downcount_loc, "Downcount");
 	return m_builder.CreateLoad(downcount);
+}
+
+LoadInst* LLVMFunction::LoadGatherPipeCount()
+{
+	return m_builder.CreateLoad(GetGatherPipeCount());
 }
 
 void LLVMFunction::StorePC(Value* val)
@@ -439,6 +480,11 @@ void LLVMFunction::StoreDownCount(Value* val)
 
 	Value* downcount = m_builder.CreateGEP(ppcState, downcount_loc, "Downcount");
 	m_builder.CreateStore(val, downcount);
+}
+
+void LLVMFunction::StoreGatherPipeCount(Value* val)
+{
+	m_builder.CreateStore(val, GetGatherPipeCount());
 }
 
 void LLVMFunction::StoreGPR(Value* val, int reg)

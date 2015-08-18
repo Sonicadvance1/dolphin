@@ -29,6 +29,7 @@
 #include "Core/PowerPC/JitLLVM/Jit.h"
 #include "Core/PowerPC/JitLLVM/JitFunction.h"
 #include "Core/PowerPC/JitLLVM/JitHelpers.h"
+#include "Core/PowerPC/JitLLVM/JitLLVM_ConstantLoadStorePass.h"
 #include "Core/PowerPC/JitLLVM/JitLLVM_Tables.h"
 
 using namespace llvm;
@@ -192,16 +193,6 @@ void JitLLVM::Jit(u32 em_address)
 	// if that is enabled), reorder instructions for optimal performance, and join joinable instructions.
 	nextPC = analyzer.Analyze(em_address, &code_block, &code_buffer, blockSize);
 
-	legacy::PassManager PM;
-	PassManagerBuilder Builder;
-	Builder.OptLevel = 2;
-	Builder.populateModulePassManager(PM);
-	PM.add(createSLPVectorizerPass());
-	raw_ostream& out = outs();
-
-	if (m_debug_enabled)
-		PM.add(createPrintModulePass(out));
-
 	LLVMModule* mod = new LLVMModule(m_engine, em_address);
 	m_mods[em_address] = mod;
 
@@ -279,7 +270,21 @@ void JitLLVM::Jit(u32 em_address)
 	if (code_block.m_broken)
 		WriteExit(nextPC);
 
+	legacy::PassManager PM;
+	PassManagerBuilder Builder;
+	Builder.OptLevel = 2;
+	raw_ostream& out = outs();
+
+	if (m_debug_enabled)
+		PM.add(createPrintModulePass(out));
+
 	verifyModule(*m_cur_mod->GetModule(), &out);
+	// XXX: We only need a pass here which constant propagates
+	Builder.populateModulePassManager(PM);
+	PM.run(*m_cur_mod->GetModule());
+
+	// Run a second pass with our optimizations enabled
+	PM.add(new ConstantLoadStorePass(0, mod));
 	PM.run(*m_cur_mod->GetModule());
 
 	m_engine->addModule(std::unique_ptr<Module>(mod->GetModule()));

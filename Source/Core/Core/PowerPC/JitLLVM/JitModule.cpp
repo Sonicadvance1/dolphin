@@ -96,10 +96,28 @@ void LLVMModule::GenerateGlobalVariables()
 	Type* ppcStatePtr = ppcStateType->getPointerTo();
 
 	/* Constants */
+	// PowerPCState
 	Constant* const_ppcstate_val = ConstantInt::getIntegerValue(ppcStatePtr, APInt(64, (uint64_t)&PowerPC::ppcState));
 	m_mod->getOrInsertGlobal("ppcState_ptr", ppcStatePtr);
 	GlobalVariable* ppcStatePtr_global = m_mod->getNamedGlobal("ppcState_ptr");
 	ppcStatePtr_global->setInitializer(const_ppcstate_val);
+
+	// Memory base
+	Constant* const_memory_val = ConstantInt::getIntegerValue(Type::getInt8PtrTy(con), APInt(64, (uint64_t)Memory::physical_base));
+	m_mod->getOrInsertGlobal("memory_base", Type::getInt8PtrTy(con));
+	GlobalVariable* memory_global = m_mod->getNamedGlobal("memory_base");
+	memory_global->setInitializer(const_memory_val);
+
+	// Gather Pipe
+	Constant* const_gatherpipe_count = ConstantInt::getIntegerValue(Type::getInt32PtrTy(con), APInt(64, (uint64_t)&GPFifo::m_gatherPipeCount));
+	m_mod->getOrInsertGlobal("GatherPipeCount", Type::getInt32PtrTy(con));
+	GlobalVariable* gatherpipe_count_global = m_mod->getNamedGlobal("GatherPipeCount");
+	gatherpipe_count_global->setInitializer(const_gatherpipe_count);
+
+	Constant* const_gatherpipe = ConstantInt::getIntegerValue(Type::getInt8PtrTy(con), APInt(64, (uint64_t)&GPFifo::m_gatherPipe));
+	m_mod->getOrInsertGlobal("GatherPipe", Type::getInt8PtrTy(con));
+	GlobalVariable* gatherpipe_global = m_mod->getNamedGlobal("GatherPipe");
+	gatherpipe_global->setInitializer(const_gatherpipe);
 }
 
 void LLVMModule::BindGlobalFunctions()

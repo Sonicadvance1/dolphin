@@ -16,6 +16,10 @@
 #include "VideoCommon/VertexLoaderARM64.h"
 #endif
 
+#ifdef HAS_LLVM
+#include "VideoCommon/VertexLoaderLLVM/VertexLoaderLLVM.h"
+#endif
+
 VertexLoaderBase::VertexLoaderBase(const TVtxDesc &vtx_desc, const VAT &vtx_attr)
 {
 	m_numLoadedVertices = 0;

@@ -53,6 +53,12 @@ else()
 	set(SRCS ${SRCS} TextureDecoder_Generic.cpp)
 endif()
 
+if(HAS_LLVM)
+	set(SRCS ${SRCS}
+	         VertexLoaderLLVM/VertexLoaderLLVM.cpp)
+endif()
+
+
 if(LIBAV_FOUND OR WIN32)
 	set(SRCS ${SRCS} AVIDump.cpp)
 endif()

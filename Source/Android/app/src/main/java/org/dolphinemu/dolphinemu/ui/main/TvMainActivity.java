@@ -2,8 +2,10 @@ package org.dolphinemu.dolphinemu.ui.main;
 
 import android.app.Activity;
 import android.app.FragmentManager;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.support.v17.leanback.app.BrowseFragment;
 import android.support.v17.leanback.database.CursorMapper;
@@ -25,6 +27,8 @@ import org.dolphinemu.dolphinemu.adapters.SettingsRowPresenter;
 import org.dolphinemu.dolphinemu.model.Game;
 import org.dolphinemu.dolphinemu.model.TvSettingsItem;
 import org.dolphinemu.dolphinemu.ui.settings.SettingsActivity;
+import org.dolphinemu.dolphinemu.utils.Java_GCAdapter;
+import org.dolphinemu.dolphinemu.utils.Java_USBHandler;
 import org.dolphinemu.dolphinemu.utils.StartupHandler;
 import org.dolphinemu.dolphinemu.viewholders.TvGameViewHolder;
 
@@ -87,6 +91,14 @@ public final class TvMainActivity extends Activity implements MainView
 		// Stuff in this block only happens when this activity is newly created (i.e. not a rotation)
 		if (savedInstanceState == null)
 			StartupHandler.HandleInit(this);
+
+		Java_USBHandler.manager = (UsbManager) getSystemService(Context.USB_SERVICE);
+		Java_GCAdapter.manager = (UsbManager) getSystemService(Context.USB_SERVICE);
+		Java_USBHandler.our_activity = this;
+		Java_USBHandler.Enumerate(0x057e, 0x0306);
+		Java_USBHandler.Enumerate(0x057e, 0x0330);
+		Java_USBHandler.RequestPermission(0x057e, 0x0306);
+		Java_USBHandler.RequestPermission(0x057e, 0x0330);
 	}
 
 	/**

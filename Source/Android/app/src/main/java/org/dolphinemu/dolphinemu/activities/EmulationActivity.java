@@ -387,6 +387,10 @@ public final class EmulationActivity extends AppCompatActivity
 				return;
 			}
 
+			case R.id.menu_refresh_wiimotes:
+				NativeLibrary.RefreshWiimotes();
+				return;
+			
 			// Screenshot capturing
 			case R.id.menu_emulation_screenshot:
 				NativeLibrary.SaveScreenShot();

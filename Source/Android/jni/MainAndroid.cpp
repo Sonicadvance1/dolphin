@@ -12,12 +12,15 @@
 #include <EGL/egl.h>
 
 #include "ButtonManager.h"
+#include "HIDTest.h"
+#include "JavaHelpers.h"
 
 #include "Common/CommonPaths.h"
 #include "Common/CommonTypes.h"
 #include "Common/CPUDetect.h"
 #include "Common/Event.h"
 #include "Common/FileUtil.h"
+#include "Common/HidInterface.h"
 #include "Common/GL/GLInterfaceBase.h"
 #include "Common/Logging/LogManager.h"
 
@@ -27,6 +30,7 @@
 #include "Core/Host.h"
 #include "Core/State.h"
 #include "Core/HW/Wiimote.h"
+#include "Core/HW/WiimoteReal/WiimoteReal.h"
 #include "Core/PowerPC/JitInterface.h"
 #include "Core/PowerPC/PowerPC.h"
 #include "Core/PowerPC/Profiler.h"
@@ -337,18 +341,6 @@ static u64 GetFileSize(std::string filename)
 	return size;
 }
 
-static std::string GetJString(JNIEnv *env, jstring jstr)
-{
-	std::string result = "";
-	if (!jstr)
-		return result;
-
-	const char *s = env->GetStringUTFChars(jstr, nullptr);
-	result = s;
-	env->ReleaseStringUTFChars(jstr, s);
-	return result;
-}
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -566,6 +558,11 @@ JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetUserDi
 	return env->NewStringUTF(File::GetUserPath(D_USER_IDX).c_str());
 }
 
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_RefreshWiimotes(JNIEnv *env, jobject obj)
+{
+	WiimoteReal::Refresh();
+}
+
 JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_SetProfiling(JNIEnv *env, jobject obj, jboolean enable)
 {
 	Core::SetState(Core::CORE_PAUSE);
@@ -645,6 +642,9 @@ JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_Run(JNIEnv *
 
 	UICommon::SetUserDirectory(g_set_userpath);
 	UICommon::Init();
+
+	HidInterface::InitHandlerClass(env);
+//	HIDTest::Init();
 
 	// No use running the loop when booting fails
 	if ( BootManager::BootCore( g_filename.c_str() ) )

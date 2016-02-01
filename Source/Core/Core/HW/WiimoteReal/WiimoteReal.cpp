@@ -8,6 +8,7 @@
 
 #include "Common/ChunkFile.h"
 #include "Common/CommonTypes.h"
+#include "Common/HidInterface.h"
 #include "Common/IniFile.h"
 #include "Common/StringUtil.h"
 #include "Common/Thread.h"
@@ -504,7 +505,7 @@ void WiimoteScanner::ThreadFunc()
 			TryToConnectBalanceBoard(found_board);
 
 		//std::this_thread::yield();
-		Common::SleepCurrentThread(500);
+		Common::SleepCurrentThread(60000);
 	}
 
 	NOTICE_LOG(WIIMOTE, "Wiimote scanning has stopped.");
@@ -624,6 +625,8 @@ void LoadSettings()
 // config dialog calls this when some settings change
 void Initialize(bool wait)
 {
+	HidInterface::Init();
+
 	if (SConfig::GetInstance().m_WiimoteContinuousScanning)
 		g_wiimote_scanner.StartScanning();
 	else
@@ -635,12 +638,24 @@ void Initialize(bool wait)
 	g_wiimote_scanner.WantBB(0 != CalculateWantedBB());
 
 	// wait for connection because it should exist before state load
-	if (wait)
+	if (1)
 	{
 		int timeout = 100;
 		std::vector<Wiimote*> found_wiimotes;
 		Wiimote* found_board = nullptr;
 		g_wiimote_scanner.FindWiimotes(found_wiimotes, found_board);
+		// Brief rumble for already connected Wiimotes.
+		// Don't do this for Balance Board as it doesn't have rumble anyway.
+		for (int i = 0; i < MAX_WIIMOTES; ++i)
+		{
+			if (g_wiimotes[i])
+			{
+				g_wiimotes[i]->Prepare();
+			}
+		}
+
+		HandleFoundWiimotes(found_wiimotes);
+
 		if (SConfig::GetInstance().m_WiimoteContinuousScanning)
 		{
 			while (CalculateWantedWiimotes() && CalculateConnectedWiimotes() < found_wiimotes.size() && timeout)
@@ -665,6 +680,8 @@ void Stop()
 	for (auto& wiimote : g_wiimotes)
 		if (wiimote && wiimote->IsConnected())
 			wiimote->EmuStop();
+
+	HidInterface::Shutdown();
 }
 
 // called when the Dolphin app exits

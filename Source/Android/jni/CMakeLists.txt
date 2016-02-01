@@ -1,7 +1,9 @@
 list(APPEND LIBS core uicommon)
 
 set(SRCS ButtonManager.cpp
-         MainAndroid.cpp)
+         HIDTest.cpp
+         MainAndroid.cpp
+	   JavaHelpers.cpp)
 
 set(SHARED_LIB main)
 add_library(${SHARED_LIB} SHARED ${SRCS})

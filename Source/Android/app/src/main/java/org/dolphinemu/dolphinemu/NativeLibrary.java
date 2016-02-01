@@ -386,6 +386,8 @@ public final class NativeLibrary
 	 */
 	private static native void CacheClassesAndMethods();
 
+	public static native void RefreshWiimotes();
+
 	static
 	{
 		try

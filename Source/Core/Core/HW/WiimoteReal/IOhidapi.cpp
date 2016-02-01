@@ -14,7 +14,7 @@ namespace WiimoteReal
 class WiimoteHidapi final : public Wiimote
 {
 public:
-	WiimoteHidapi(HidInterface::HidDeviceInfo* device);
+	WiimoteHidapi(std::unique_ptr<HidInterface::HidDeviceInfo> device);
 	~WiimoteHidapi() override;
 
 protected:
@@ -26,13 +26,12 @@ protected:
 	int IOWrite(u8 const* buf, size_t len) override;
 
 private:
-	HidInterface::HidDeviceInfo* m_device;
+	std::unique_ptr<HidInterface::HidDeviceInfo> m_device;
 };
 
 WiimoteScanner::WiimoteScanner()
 	: m_want_wiimotes()
 {
-	HidInterface::Init();
 }
 
 bool WiimoteScanner::IsReady() const
@@ -42,7 +41,6 @@ bool WiimoteScanner::IsReady() const
 
 WiimoteScanner::~WiimoteScanner()
 {
-	HidInterface::Shutdown();
 }
 
 void WiimoteScanner::Update()
@@ -53,17 +51,18 @@ void WiimoteScanner::FindWiimotes(std::vector<Wiimote*>& found_wiimotes, Wiimote
 	// Search for both old and new Wiimotes.
 	for (uint16_t product_id : {0x0306, 0x0330})
 	{
-		const auto& list = HidInterface::Enumerate(0x057e, product_id);
-		for (const auto& item : list)
+		auto list = HidInterface::Enumerate(0x057e, product_id);
+		for (auto& item : list)
 		{
 			NOTICE_LOG(WIIMOTE, "Found Wiimote at %s: %ls %ls", item->m_path.c_str(), item->m_manufacturer.c_str(), item->m_product.c_str());
-			Wiimote* wiimote = new WiimoteHidapi(item.get());
+			Wiimote* wiimote = new WiimoteHidapi(std::move(item));
 			found_wiimotes.push_back(wiimote);
 		}
 	}
 }
 
-WiimoteHidapi::WiimoteHidapi(HidInterface::HidDeviceInfo* device) : m_device(device)
+WiimoteHidapi::WiimoteHidapi(std::unique_ptr<HidInterface::HidDeviceInfo> device)
+	: m_device(std::move(device))
 {}
 
 WiimoteHidapi::~WiimoteHidapi()
@@ -74,7 +73,7 @@ WiimoteHidapi::~WiimoteHidapi()
 // Connect to a wiimote with a known address.
 bool WiimoteHidapi::ConnectInternal()
 {
-	bool result = HidInterface::Open(m_device);
+	bool result = HidInterface::Open(m_device.get());
 	if (!result)
 	{
 		ERROR_LOG(WIIMOTE, "Could not connect to Wiimote at \"%s\". "
@@ -86,7 +85,7 @@ bool WiimoteHidapi::ConnectInternal()
 
 void WiimoteHidapi::DisconnectInternal()
 {
-	HidInterface::Close(m_device);
+	HidInterface::Close(m_device.get());
 }
 
 bool WiimoteHidapi::IsConnected() const
@@ -103,7 +102,7 @@ void WiimoteHidapi::IOWakeup()
 int WiimoteHidapi::IORead(u8* buf)
 {
 	int timeout = 200; // ms
-	int result = HidInterface::Read(m_device, buf + 1, MAX_PAYLOAD - 1, timeout);
+	int result = HidInterface::Read(m_device.get(), buf + 1, MAX_PAYLOAD - 1, timeout);
 	// TODO: If and once we use hidapi across plaforms, change our internal API to clean up this mess.
 	if (result == -1)
 	{
@@ -125,7 +124,7 @@ int WiimoteHidapi::IORead(u8* buf)
 int WiimoteHidapi::IOWrite(u8 const* buf, size_t len)
 {
 	_dbg_assert_(WIIMOTE, buf[0] == (WM_SET_REPORT | WM_BT_OUTPUT));
-	int result = HidInterface::Write(m_device, buf + 1, len - 1);
+	int result = HidInterface::Write(m_device.get(), buf + 1, len - 1);
 	if (result == -1)
 	{
 		ERROR_LOG(WIIMOTE, "Failed to write to %s.", m_device->m_path.c_str());
